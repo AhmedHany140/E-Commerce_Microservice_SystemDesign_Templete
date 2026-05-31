@@ -1,3 +1,4 @@
+
 # 🛒 E-Commerce Microservices Architecture — .NET 10, CQRS & Event-Driven
 
 > **A resilient, highly scalable hybrid CQRS ecosystem engineered to guarantee consistency and performance at enterprise scale.**
@@ -677,14 +678,3 @@ E-Commerce_Microservice_SystemDesign_Templete/
 | Paymob Integration | [paymob.com/docs](https://paymob.com/docs) |
 
 ---
-
-## License
-
-This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
-
----
-
-<p align="center">
-  <b>Built with .NET 10, CQRS, and Event-Driven Architecture</b><br>
-  <sub>Enterprise-grade microservices for modern e-commerce</sub>
-</p>
