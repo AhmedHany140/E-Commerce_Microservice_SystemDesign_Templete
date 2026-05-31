@@ -1,0 +1,21 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ECommerce.PaymentService.Api.Grpc";
+
+package PaymentService;
+
+service PaymentGrpcService {
+  rpc InitialPayment (InitialPaymentRequest) returns (InitialPaymentResponse);
+}
+
+message InitialPaymentRequest {
+  string orderId = 1;
+  double amount = 2;
+  string method = 3;
+  string userPhone = 4;
+  string userEmail = 5;
+}
+
+message InitialPaymentResponse {
+  string url = 1;
+}

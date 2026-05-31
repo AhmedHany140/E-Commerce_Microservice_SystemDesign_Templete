@@ -1,0 +1,18 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ECommerce.PaymentService.Infrastructure.Grpc";
+
+package PaymentService;
+
+service OrderGrpcService {
+    
+    rpc PaidOrder(PayOrderRequest) returns (PayOrderResponse);
+}
+
+message PayOrderRequest {
+    string OrderId = 1; 
+}
+
+message PayOrderResponse {
+    bool IsSuccess = 1;
+}
