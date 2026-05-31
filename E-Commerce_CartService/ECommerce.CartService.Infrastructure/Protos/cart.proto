@@ -1,0 +1,31 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ECommerce.CartService.Api.Grpc";
+
+package CartService;
+
+import "google/protobuf/timestamp.proto";
+
+
+service CartGrpcService{
+	rpc GetCart(GetCartRequest)returns(CartResponse);
+}
+
+message GetCartRequest{
+	string userid=1;
+}
+
+message CartResponse{
+	string Id=1;
+	string UserId=2;
+	google.protobuf.Timestamp CreatedAt=3;
+	repeated CartItemResponse Items = 4;
+}
+
+message CartItemResponse{
+	string Id=1;
+	string CartId=2;
+	string ProductId=3;
+	int32 Quantity=4;
+	google.protobuf.Timestamp AddedAt=5;
+}

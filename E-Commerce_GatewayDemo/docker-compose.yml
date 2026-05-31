@@ -1,0 +1,40 @@
+# services:
+
+#   gateway:
+#     build:
+#       context: .
+#       dockerfile: E-Commerce-Gateway/Dockerfile
+#     ports:
+#       - "7225:80"
+#     depends_on:
+#       - productservice
+
+#   productservice:
+#     build:
+#       context: ..
+#       dockerfile: ../ECommerce.ProductService.Api/Dockerfile
+#     ports:
+#       - "7103:80"
+
+#   orderservice:
+#     build:
+#       context: ..
+#       dockerfile: ../ECommerce.OrderService.Api/Dockerfile
+#     ports:
+#       - "7104:80"
+
+#   cartservice:
+#     build:
+#       context: ..
+#       dockerfile: ../ECommerce.CartService.Api/Dockerfile
+#     ports:
+#       - "7105:80"
+
+#   authservice:
+#      build:
+#        context: ..
+#        dockerfile: ../E-Commerce_Auth_Servic.Api/Dockerfile
+#      ports:
+#        - "7206:80"
+
+     

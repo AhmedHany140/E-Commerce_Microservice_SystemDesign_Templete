@@ -1,0 +1,14 @@
+{
+  "subgraphs": [
+    {
+      "name": "products",
+      "routing_url": "http://localhost:7103/graphql",
+      "schema": "./schemas/products.graphql"
+    },
+    {
+      "name": "orders",
+      "routing_url": "http://localhost:7046/graphql",
+      "schema": "./schemas/orders.graphql"
+    }
+  ]
+}

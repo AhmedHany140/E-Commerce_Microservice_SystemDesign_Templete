@@ -1,0 +1,21 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ECommerce.PaymentService.Api.Grpc";
+
+package PaymentService;
+
+service PaymentGrpcService {
+  rpc Refund(RefundRequest) returns (RefundResponse);
+}
+
+
+message RefundRequest{
+	string PaymobTransactionId=1;
+	double amount=2;
+}
+
+message RefundResponse{
+	bool IsSuccess=1;
+	string Message=2;
+	optional string RefundTransactionId = 3;
+}

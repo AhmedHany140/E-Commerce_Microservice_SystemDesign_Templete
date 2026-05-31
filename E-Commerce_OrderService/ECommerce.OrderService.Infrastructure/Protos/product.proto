@@ -1,0 +1,31 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ECommerce.ProductService.Infrastructure.Grpc";
+
+package ProductService;
+
+import "google/protobuf/timestamp.proto";
+
+service ProductGrpcService {
+	rpc GetProduct(GetProductRequest) returns (ProductResponse);
+}
+
+message GetProductRequest {
+	string id = 1;
+}
+
+message ProductResponse {
+	string id = 1;
+	string Name = 2;
+	string Description = 3;
+    
+	double Price = 4; 
+    
+	int32 StockQuantity = 5; 
+    
+	string CategoryId = 6;
+    
+	google.protobuf.Timestamp CreatedAt = 7;
+    
+	optional google.protobuf.Timestamp UpdatedAt = 8;
+}

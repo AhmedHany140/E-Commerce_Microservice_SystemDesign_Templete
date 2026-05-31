@@ -1,0 +1,24 @@
+﻿syntax = "proto3";
+
+option csharp_namespace = "ECommerce.CartService.Infrastructure.Grpc";
+
+package OrderService;
+
+import "google/protobuf/timestamp.proto";
+
+
+service OrderGrpcService{
+	rpc CreateOrder(CreateOrderRequest)returns(CreateOrderResponse);
+}
+
+message CreateOrderRequest{
+	string UserId=1;
+	string ShippingAddress=2;
+}
+
+
+message CreateOrderResponse
+{
+	string OrderId=1;
+	double TotalPrice=2;
+}

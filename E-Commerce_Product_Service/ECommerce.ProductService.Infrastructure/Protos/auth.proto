@@ -1,0 +1,6 @@
+syntax = "proto3";
+
+option csharp_namespace = "ECommerce.ProductService.Infrastructure.Grpc";
+
+package authorization;
+
