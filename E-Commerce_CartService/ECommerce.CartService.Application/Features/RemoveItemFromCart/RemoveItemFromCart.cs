@@ -1,23 +1,14 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using ECommerce.CartService.Application.Common.Interfaces;
 using FluentResults;
-using FluentValidation;
+using Wolverine.Attributes;
 
 namespace ECommerce.CartService.Application.Commands.RemoveItemFromCart;
 
 public record RemoveItemFromCartCommand(Guid ItemId, string UserId);
 
-public class RemoveItemFromCartCommandValidator : AbstractValidator<RemoveItemFromCartCommand>
-{
-    public RemoveItemFromCartCommandValidator()
-    {
-        RuleFor(x => x.ItemId).NotEmpty();
-        RuleFor(x => x.UserId).NotEmpty();
-    }
-}
 
+
+[WolverineHandler]
 public static class RemoveItemFromCartHandler
 {
     public static async Task<Result> Handle(RemoveItemFromCartCommand command, ICartRepository _repository, CancellationToken ct)
@@ -30,7 +21,6 @@ public static class RemoveItemFromCartHandler
         if (result.IsFailed)
             return result;
 
-        await _repository.SaveChangesAsync(ct);
         return Result.Ok();
     }
 }

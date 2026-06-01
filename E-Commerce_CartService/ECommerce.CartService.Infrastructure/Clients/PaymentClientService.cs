@@ -1,4 +1,5 @@
-﻿using ECommerce.CartService.Application.Common.Interfaces;
+﻿using ECommerce.CartService.Application.Commands.ProccessPayments;
+using ECommerce.CartService.Application.Common.Interfaces;
 using ECommerce.PaymentService.Api.Grpc;
 using FluentResults;
 using Grpc.Core;
@@ -20,7 +21,7 @@ namespace ECommerce.CartService.Infrastructure.Clients
 		}
 
 		public async Task<Result<string>> IntialPaymentAsync(
-			InitiatePaymentRequest request,
+			InitiatePaymentCommand request,
 			CancellationToken ct = default)
 		{
 			try

@@ -17,13 +17,3 @@ public interface IProductServiceClient
 
 public record ProductDto(Guid Id, string Name,
 string Description, decimal Price, int StockQuantity);
-
-public record RefundPaymentRequest(string PaymobTransactionId, decimal Amount);
-public record RefundDto(bool Success, string Message,string? RefundTransactionId);
-public interface IPaymentServiceClient
-{
-	Task<Result<RefundDto>> RefundAsync(RefundPaymentRequest request,
-		CancellationToken ct = default);
-}
-
-

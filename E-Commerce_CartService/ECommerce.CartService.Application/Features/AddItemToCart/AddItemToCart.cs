@@ -1,25 +1,18 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using ECommerce.CartService.Application.Common.Interfaces;
 using ECommerce.CartService.Domain.Entities;
 using FluentResults;
 using FluentValidation;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using Wolverine.Attributes;
 
 namespace ECommerce.CartService.Application.Commands.AddItemToCart;
 
 public record AddItemToCartCommand(Guid ProductId, int Quantity, string UserId);
 
-public class AddItemToCartCommandValidator : AbstractValidator<AddItemToCartCommand>
-{
-    public AddItemToCartCommandValidator()
-    {
-        RuleFor(x => x.ProductId).NotEmpty();
-        RuleFor(x => x.Quantity).GreaterThan(0);
-        RuleFor(x => x.UserId).NotEmpty();
-    }
-}
 
+[WolverineHandler]
 public static class AddItemToCartHandler
 {
     public static async Task<Result> Handle(AddItemToCartCommand command, 
@@ -50,8 +43,6 @@ public static class AddItemToCartHandler
         if (addResult.IsFailed)
             return addResult;
 
-        // 4. Save
-        await _repository.SaveChangesAsync(ct);
         return Result.Ok();
     }
 }

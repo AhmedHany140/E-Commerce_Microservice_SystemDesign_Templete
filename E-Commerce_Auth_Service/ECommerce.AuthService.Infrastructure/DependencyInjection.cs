@@ -1,16 +1,15 @@
-using System.Text;
 using ECommerce.AuthService.Application.Interfaces;
 using ECommerce.AuthService.Domain.Entities;
 using ECommerce.AuthService.Infrastructure.Persistence;
 using ECommerce.AuthService.Infrastructure.Services;
-using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-
+using System.Text;
+using Wolverine.EntityFrameworkCore;
 namespace ECommerce.AuthService.Infrastructure;
 
 /// <summary>
@@ -36,7 +35,7 @@ public static class DependencyInjection
     private static IServiceCollection AddPersistence(
         this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContext<AuthDbContext>(options =>
+        services.AddDbContextWithWolverineIntegration<AuthDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Constr")));
 
         return services;

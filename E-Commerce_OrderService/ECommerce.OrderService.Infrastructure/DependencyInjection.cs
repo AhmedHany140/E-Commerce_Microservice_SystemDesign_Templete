@@ -78,21 +78,7 @@ public static class DependencyInjection
             client.Address = new Uri(configuration["ProductService:BaseUrl"]);
         });
 
-        // Messaging (MassTransit + RabbitMQ)
-        services.AddMassTransit(x =>
-        {
-            x.UsingRabbitMq((context, cfg) =>
-            {
-                var rabbitConfig = configuration.GetSection("RabbitMQ");
-                cfg.Host(rabbitConfig["Host"] ?? "localhost", h =>
-                {
-                    h.Username(rabbitConfig["Username"] ?? "guest");
-                    h.Password(rabbitConfig["Password"] ?? "guest");
-                });
-            });
-        });
-
-
+  
 
 		services.Scan(scan => scan
 					.FromAssemblies(typeof(ProductServiceClient)

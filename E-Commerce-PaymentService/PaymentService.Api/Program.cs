@@ -1,10 +1,12 @@
 using DotNetEnv;
-using MassTransit;
 using PaymentService.Api.Dtos;
 using PaymentService.Api.Endpoints;
+using PaymentService.Api.Events;
 using PaymentService.Api.Interfaces;
 using PaymentService.Api.Services;
 using Serilog;
+using Wolverine;
+using Wolverine.RabbitMQ;
 
 Env.Load();
 
@@ -21,22 +23,37 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 
 
-builder.Services.AddMassTransit(x =>
+builder.Host.UseWolverine(opts =>
 {
-	x.UsingRabbitMq((context, cfg) =>
-	{
-		var rabbitUrl = builder.Configuration["RabbitMqUrl:url"];
 
-		if (string.IsNullOrEmpty(rabbitUrl))
-		{
-			throw new ArgumentNullException("RabbitMqUrl:url", "RabbitMQ URL is missing from configuration.");
-		}
 
-		cfg.Host(new Uri(rabbitUrl));
+	//Auto -apply idempotency to all handlers that do not have DB Transactions. This means that even handlers that do not interact with the database will still benefit from idempotency, preventing duplicate processing of messages in scenarios where transactions are not used.
+	opts.Policies.AutoApplyIdempotencyOnNonTransactionalHandlers();
 
-		cfg.UseRawJsonSerializer(RawSerializerOptions.AnyMessageType);
-	});
+	var rabbitUrl = builder.Configuration["RabbitMq:Url"];
+
+	opts.UseRabbitMq(new Uri(rabbitUrl))
+		.AutoProvision();
+
+	opts.UseSystemTextJsonForSerialization();
+
+	opts.PublishMessage<PaymentSucceededEvent>()
+		.ToRabbitQueue("payment-queue");
+
+	opts.PublishMessage<PaymentFailedEvent>()
+	   .ToRabbitQueue("payment-queue");
+
+	opts.PublishMessage<RefundResult>()
+	.ToRabbitQueue("refund-queue");
+
+	opts.UseSystemTextJsonForSerialization();
+
+	opts.ListenToRabbitQueue("payment-queue");
+
+
 });
+
+
 
 
 builder.Services.AddOpenApi();

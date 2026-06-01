@@ -1,5 +1,4 @@
 using ECommerce.ProductService.Application.Common.Interfaces;
-using ECommerce.ProductService.Infrastructure.Grpc;
 using ECommerce.ProductService.Infrastructure.Persistence;
 using ECommerce.ProductService.Infrastructure.Persistence.Repositories;
 using MassTransit;
@@ -8,9 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.Text;
+using Wolverine.EntityFrameworkCore;
 
 namespace ECommerce.ProductService.Infrastructure
 {
@@ -24,7 +22,7 @@ namespace ECommerce.ProductService.Infrastructure
 			var connectionString = configuration.GetConnectionString(
 				"Constr");
 
-			services.AddDbContext<ProductDbContext>(options =>
+			services.AddDbContextWithWolverineIntegration<ProductDbContext>(options =>
 				options.UseSqlServer(connectionString));
 
 
