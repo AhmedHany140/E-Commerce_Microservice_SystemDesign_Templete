@@ -6,7 +6,6 @@ package PaymentService;
 
 service PaymentGrpcService {
   rpc InitialPayment (InitialPaymentRequest) returns (InitialPaymentResponse);
-  rpc Refund(RefundRequest) returns (RefundResponse);
 }
 
 message InitialPaymentRequest {
@@ -19,15 +18,4 @@ message InitialPaymentRequest {
 
 message InitialPaymentResponse {
   string url = 1;
-}
-
-message RefundRequest{
-	string PaymobTransactionId=1;
-	double amount=2;
-}
-
-message RefundResponse{
-	bool IsSuccess=1;
-	string Message=2;
-	optional int32 RefundTransactionId = 3;
 }

@@ -6,10 +6,16 @@ using ECommerce.AuthService.Infrastructure;
 using ECommerce.AuthService.Presentation;
 using ECommerce.Shared.Messages;
 using FluentValidation;
+using Humanizer;
+using Microsoft.Data.SqlClient;
 using Serilog;
 using Wolverine;
+using Wolverine.EntityFrameworkCore;
+using Wolverine.ErrorHandling;
 using Wolverine.Http;
+using Wolverine.Persistence;
 using Wolverine.RabbitMQ;
+using Wolverine.SqlServer;
 
 Env.Load();
 
@@ -36,8 +42,44 @@ builder.Services.AddValidatorsFromAssemblyContaining<PresentationMarker>();
 // ── Wolverine ────────────────────────────────────────────────────────
 builder.Host.UseWolverine(opts =>
 {
+	var connectionString = builder.Configuration.GetConnectionString("Constr");
+
 	opts.ApplicationAssembly = typeof(LoginCommand).Assembly;
 	opts.Discovery.IncludeAssembly(typeof(PresentationMarker).Assembly);
+
+
+	opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+
+
+	opts.UseEntityFrameworkCoreTransactions();
+
+	//Auto -apply idempotency to all handlers that are Has DB Transactions ( those that use Entity Framework Core transactions). This means that any handler that interacts with the database will automatically have idempotency applied, ensuring that duplicate messages are not processed multiple times.
+	opts.Policies.AutoApplyTransactions(IdempotencyStyle.Eager);
+
+	//Auto -apply idempotency to all handlers that do not have DB Transactions. This means that even handlers that do not interact with the database will still benefit from idempotency, preventing duplicate processing of messages in scenarios where transactions are not used.
+	opts.Policies.AutoApplyIdempotencyOnNonTransactionalHandlers();
+
+	opts.Durability.KeepAfterMessageHandling = 24.Hours();
+
+	opts.Durability.Mode = DurabilityMode.Solo;
+
+	opts.Policies
+	.OnException<SqlException>()
+	.RetryWithCooldown(
+		1.Seconds(),
+		5.Seconds(),
+		15.Seconds());
+
+	opts.Policies
+		.OnException<ValidationException>()
+		.Discard();
+
+	opts.Policies
+		.OnAnyException()
+		.MoveToErrorQueue();
+
+	opts.Policies.AutoApplyTransactions();
+
 
 	var rabbitUrl = builder.Configuration["RabbitMq:Url"];
 

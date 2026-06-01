@@ -2,19 +2,17 @@ using ECommerce.CartService.Api.Grpc;
 using ECommerce.CartService.Application.Common.Interfaces;
 using ECommerce.CartService.Infrastructure.Clients;
 using ECommerce.CartService.Infrastructure.Grpc;
-using ECommerce.CartService.Infrastructure.Messaging;
 using ECommerce.CartService.Infrastructure.Persistence;
 using ECommerce.CartService.Infrastructure.Persistence.Repositories;
 using ECommerce.CartService.Infrastructure.ProductClient;
 using ECommerce.PaymentService.Api.Grpc;
-using Grpc.Net.Client;
-using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Wolverine.EntityFrameworkCore;
 
 namespace ECommerce.CartService.Infrastructure;
 
@@ -28,7 +26,7 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString(
             "Constr");
 
-        services.AddDbContext<CartDbContext>(options =>
+        services.AddDbContextWithWolverineIntegration<CartDbContext>(options =>
             options.UseSqlServer(connectionString));
 
 
@@ -74,26 +72,6 @@ public static class DependencyInjection
 
         // ── gRPC client → Auth Service ────────────────────────────────────────
        
-     
-        // ── Messaging (MassTransit + RabbitMQ) ────────────────────────────────
-        services.AddMassTransit(x =>
-        {
-            x.UsingRabbitMq((context, cfg) =>
-            {
-                var rabbitMqHost = configuration["RabbitMQ:Host"] ?? "localhost";
-                var rabbitMqUser = configuration["RabbitMQ:Username"] ?? "guest";
-                var rabbitMqPass = configuration["RabbitMQ:Password"] ?? "guest";
-
-                cfg.Host(rabbitMqHost, h =>
-                {
-                    h.Username(rabbitMqUser);
-                    h.Password(rabbitMqPass);
-                });
-
-                cfg.ConfigureEndpoints(context);
-            });
-        });
-
         var productServiceUrl =
             configuration["ProductService:GrpcUrl"];
 
@@ -118,11 +96,7 @@ public static class DependencyInjection
 			options.Address = new Uri(orderServiceUrl);
 		});
 
-		//services.AddGrpcClient<>(options =>
-		//{
-		//	options.Address = new Uri(authServiceUrl);
-		//});
-
+		
 		services.AddGrpcClient<PaymentGrpcService.PaymentGrpcServiceClient
 		>(options =>
 		{
@@ -148,7 +122,6 @@ public static class DependencyInjection
 
 
 
-		services.AddScoped<IEventBus, EventBus>();
 
         return services;
     }

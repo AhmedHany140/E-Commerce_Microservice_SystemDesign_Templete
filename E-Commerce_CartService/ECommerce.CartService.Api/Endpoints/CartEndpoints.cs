@@ -1,7 +1,10 @@
 using ECommerce.CartService.Api.Authorization;
+using ECommerce.CartService.Api.Mappers;
+using ECommerce.CartService.Api.Requests;
 using ECommerce.CartService.Application.Commands.AddItemToCart;
 using ECommerce.CartService.Application.Commands.CheckoutCart;
 using ECommerce.CartService.Application.Commands.ClearCart;
+using ECommerce.CartService.Application.Commands.ProccessPayments;
 using ECommerce.CartService.Application.Commands.RemoveItemFromCart;
 using ECommerce.CartService.Application.Commands.UpdateItemQuantity;
 using ECommerce.CartService.Application.Common.Interfaces;
@@ -11,15 +14,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 using Wolverine;
+using Wolverine.Attributes;
 using Wolverine.Http;
 
 namespace ECommerce.CartService.Api.Endpoints;
-
-public record CheckoutRequest(
-	   string ShippingAddress,
-	   PaymentMethod paymentMethod,
-	   string UserEmail,
-	   string UserPhone);
 
 
 
@@ -38,8 +36,8 @@ public static class CartEndpoints
        HttpContext httpContext,
        IMessageBus bus,CancellationToken ct)
     {
-        var command = new AddItemToCartCommand(request.ProductId,
-            request.Quantity, GetUserId(httpContext));
+        var mapper = new CartMapper();
+        var command = mapper.ToCommand(request, GetUserId(httpContext));
         var result = await bus.InvokeAsync<Result>(command,ct);
         
         if (result.IsFailed)
@@ -51,7 +49,8 @@ public static class CartEndpoints
     [WolverinePut("/api/carts/update-quantity")]
     public static async Task<IResult> Handle(UpdateItemQuantityRequest request, HttpContext httpContext, IMessageBus bus)
     {
-        var command = new UpdateItemQuantityCommand(request.ItemId, request.NewQuantity, GetUserId(httpContext));
+        var mapper = new CartMapper();
+        var command = mapper.ToCommand(request, GetUserId(httpContext));
         var result = await bus.InvokeAsync<FluentResults.Result>(command);
 
         if (result.IsFailed)
@@ -90,7 +89,8 @@ public static class CartEndpoints
     }
 
     [WolverinePost("/api/carts/checkout")]
-    public static async Task<IResult> Handle(
+	[Idempotent]
+	public static async Task<IResult> Handle(
 	     CheckoutRequest request,
 		IMessageBus _messageBus,
 		IPaymentServiceClient _paymentServiceClient,
@@ -110,7 +110,8 @@ public static class CartEndpoints
 			return Results.Unauthorized();
 
         
-        var CreateOrderCommand = new CreateOrderCommand(userId,request.ShippingAddress);
+        var mapper = new CartMapper();
+        var CreateOrderCommand = mapper.ToCommand(request, userId);
         //cal order service
         var CreateOrderResult = await _messageBus
             .InvokeAsync<Result<CreateOrderDto>>(CreateOrderCommand, ct);
@@ -122,15 +123,14 @@ public static class CartEndpoints
 
         //Get Payment Link
 
-        var Paymentrequest = new InitiatePaymentRequest(order.OrderId,
+        var PaymentCommand = new InitiatePaymentCommand(order.OrderId,
             order.TotalPrice
             , request.paymentMethod, request.UserPhone,request.UserPhone
             );
 
-		
 
-		var GeneratePaymentLinkResult = await _paymentServiceClient
-            .IntialPaymentAsync(Paymentrequest, ct);
+        var GeneratePaymentLinkResult = await _messageBus
+            .InvokeAsync<Result<string>>(PaymentCommand,ct);
 
         if (GeneratePaymentLinkResult.IsFailed)
             return Results.BadRequest(GeneratePaymentLinkResult.Errors);
@@ -155,5 +155,3 @@ public static class CartEndpoints
     }
 }
 
-public record AddItemToCartRequest(Guid ProductId, int Quantity);
-public record UpdateItemQuantityRequest(Guid ItemId, int NewQuantity);

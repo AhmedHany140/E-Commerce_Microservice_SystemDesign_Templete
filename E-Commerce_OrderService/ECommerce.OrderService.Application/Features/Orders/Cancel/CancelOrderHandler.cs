@@ -1,15 +1,13 @@
 using ECommerce.OrderService.Application.Common.Interfaces;
 using ECommerce.OrderService.Domain.Enums;
-using ECommerce.OrderService.Domain.Events;
 using FluentResults;
 using Microsoft.Extensions.Logging;
-using Wolverine.Attributes;
 
 namespace ECommerce.OrderService.Application.Features.Orders.Cancel;
 
 public static class CancelOrderHandler
 {
-	[Transactional]
+	//[Transactional it done with policy in the bus configuration, so all operations inside this handler will be part of the same transaction scope]
 	public static async Task<Result> Handle(CancelOrderCommand command,
 		IOrderRepository _orderRepository,
 		IPaymentServiceClient _paymentServiceClient,
@@ -39,6 +37,8 @@ public static class CancelOrderHandler
 				_logger.LogWarning(
 					"Order {OrderId} is Paid but has no PaymobTransactionId, skipping refund.",
 					order.Id);
+
+				return Result.Fail("Order is paid but missing transaction ID for refund.");
 			}
 			else
 			{
@@ -47,26 +47,18 @@ public static class CancelOrderHandler
 					order.Id, order.PaymobTransactionId);
 
 				var refundResult = await _paymentServiceClient.RefundAsync(
-					new RefundPaymentRequest(
-						order.PaymobTransactionId,
-						order.TotalPrice),
-					ct);
+					new RefundPaymentRequest(order.PaymobTransactionId, order.TotalPrice), ct);
 
 				if (refundResult.IsFailed)
 				{
 					_logger.LogError(
-						"Refund failed for Order {OrderId}: {Errors}",
-						order.Id, string.Join(", ", refundResult.Errors.Select(e => e.Message)));
+						"Refund failed for Order {OrderId}, Transaction {TransactionId}: {Error}",
+						order.Id, order.PaymobTransactionId, refundResult.Errors[0].Message);
 
-					return Result.Fail($"Refund failed: {refundResult.Errors.First().Message}");
+					return Result.Fail($"Refund failed: {refundResult.Errors[0].Message}");
 				}
-
-				// ? Mark as Refunded
+				
 				order.MarkAsRefunded(refundResult.Value.RefundTransactionId);
-
-				_logger.LogInformation(
-					"Refund successful for Order {OrderId}, RefundTransactionId: {RefundId}",
-					order.Id, refundResult.Value.RefundTransactionId);
 			}
 		}
 

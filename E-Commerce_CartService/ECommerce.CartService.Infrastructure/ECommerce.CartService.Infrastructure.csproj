@@ -25,6 +25,8 @@
     <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.6" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.6" />
     <PackageReference Include="Scrutor.AspNetCore" Version="3.3.0" />
+    <PackageReference Include="WolverineFx.EntityFrameworkCore" Version="6.2.2" />
+    <PackageReference Include="WolverineFx.SqlServer" Version="6.2.2" />
   </ItemGroup>
 
   <PropertyGroup>

@@ -9,13 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="NewFolder\**" />
-    <Content Remove="NewFolder\**" />
-    <EmbeddedResource Remove="NewFolder\**" />
-    <None Remove="NewFolder\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Remove="Protos\order.proto" />
     <None Remove="Protos\payment.proto" />
   </ItemGroup>
@@ -34,6 +27,8 @@
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.1" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.22.1" />
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageReference Include="WolverineFx" Version="6.2.2" />
+    <PackageReference Include="WolverineFx.RabbitMQ" Version="6.2.2" />
   </ItemGroup>
 
   <ItemGroup>

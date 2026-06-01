@@ -1,14 +1,20 @@
-using ECommerce.OrderService.Api.Consumers;
+using ECommerce.OrderService.Api.Endpoints;
 using ECommerce.OrderService.Api.Queries;
 using ECommerce.OrderService.Application.Features.Orders.Cancel;
 using ECommerce.OrderService.Infrastructure;
 using ECommerce.OrderService.Infrastructure.Services;
 using FluentValidation;
-using MassTransit;
+using JasperFx.Core;
+using Microsoft.Data.SqlClient;
 using Serilog;
 using Wolverine;
+using Wolverine.EntityFrameworkCore;
+using Wolverine.ErrorHandling;
 using Wolverine.Http;
 using Wolverine.Http.FluentValidation;
+using Wolverine.Persistence;
+using Wolverine.RabbitMQ;
+using Wolverine.SqlServer;
 
 DotNetEnv.Env.Load();
 
@@ -35,11 +41,57 @@ builder.Services.AddValidatorsFromAssemblyContaining<CancelOrderCommand>();
 // Authorization
 builder.Services.AddHttpContextAccessor();
 
-// Wolverine setup
+
 builder.Host.UseWolverine(opts =>
 {
-	opts.Discovery.IncludeAssembly(typeof(CancelOrderCommand).Assembly);//in application layer for command handlers
+	var connectionString = builder.Configuration.GetConnectionString("Constr");
+
+	opts.Discovery.IncludeAssembly(typeof(CancelOrderCommand).Assembly);
+	opts.ApplicationAssembly = typeof(OrderEndpoints).Assembly;
+
+	opts.PersistMessagesWithSqlServer(connectionString, "Service");
+
+
+	opts.UseEntityFrameworkCoreTransactions();
+
+	opts.Policies.AutoApplyTransactions(IdempotencyStyle.Eager);
+
+	opts.Policies.AutoApplyIdempotencyOnNonTransactionalHandlers();
+
+	opts.Durability.KeepAfterMessageHandling = 24.Hours();
+
+	opts.Durability.Mode = DurabilityMode.Solo;
+
+	opts.Policies
+	.OnException<SqlException>()
+	.RetryWithCooldown(
+		1.Seconds(),
+		5.Seconds(),
+		15.Seconds());
+
+	opts.Policies
+		.OnException<ValidationException>()
+		.Discard();
+
+	opts.Policies
+		.OnAnyException()
+		.MoveToErrorQueue();
+
+	opts.Policies.AutoApplyTransactions();
+
+	var rabbitUrl =
+	   builder.Configuration["RabbitMqUrl:url"];
+
+	opts.UseRabbitMq(new Uri(rabbitUrl))
+		.AutoProvision();
+
+	opts.UseSystemTextJsonForSerialization();
+
+	opts.ListenToRabbitQueue("payment-queue");
+	opts.ListenToRabbitQueue("refund-queue");
+
 });
+
 builder.Services.AddWolverineHttp();
 
 builder.Services.AddGrpc();
@@ -61,34 +113,6 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
-builder.Services.AddMassTransit(x =>
-{
-	// Register Consumer
-	x.AddConsumer<PaymentSucceededConsumer>();
-	x.AddConsumer<PaymentFailedConsumer>();
-
-	x.UsingRabbitMq((context, cfg) =>
-	{
-		var rabbitUrl = builder.Configuration["RabbitMqUrl:url"];
-
-		cfg.Host(new Uri(rabbitUrl));
-
-
-		cfg.UseRawJsonSerializer(RawSerializerOptions.AnyMessageType);
-
-		cfg.ReceiveEndpoint("payment-queue", e =>
-		{
-			e.ConfigureConsumer<PaymentSucceededConsumer>(context);
-			e.ConfigureConsumer<PaymentFailedConsumer>(context);
-
-
-			e.UseMessageRetry(r =>
-			{
-				r.Interval(3, TimeSpan.FromSeconds(5));
-			});
-		});
-	});
-});
 
 
 var app = builder.Build();

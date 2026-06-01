@@ -1,12 +1,13 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PaymentService.Api.Enums;
+using PaymentService.Api.Events;
 using PaymentService.Api.Interfaces;
 using System.Text.Json;
-using MassTransit;
-using PaymentService.Api.Dtos; // ✅ إضافة MassTransit
+using Wolverine;
+using Wolverine.Attributes;
 
 namespace PaymentService.Api.Endpoints
 {
+	//[Idempotent] auto apply with Policy
 	public static class PaymentEndpoints
 	{
 		public static void Map(IEndpointRouteBuilder app)
@@ -14,7 +15,7 @@ namespace PaymentService.Api.Endpoints
 			app.MapPost("/api/payment/webhook",
 			async ([FromBody] dynamic request,
 			[FromServices] IPaymobService paymobService,
-			[FromServices] IPublishEndpoint publishEndpoint, // ✅ استخدام MassTransit للـ Publish
+			[FromServices] IMessageBus _bus, 
 			[FromServices] ILogger logger) =>
 			{
 				try
@@ -46,7 +47,7 @@ namespace PaymentService.Api.Endpoints
 						logger.LogWarning("Payment failed for OrderId: {OrderId}, TransactionId: {TransactionId}",
 						cleanGuidStr, transactionId);
 
-						await publishEndpoint.Publish(new 
+						await _bus.PublishAsync(new 
 							PaymentFailedEvent(Guid.Parse(cleanGuidStr),
 							transactionId));
 
@@ -62,7 +63,7 @@ namespace PaymentService.Api.Endpoints
 						PaymentType: paymentType
 					);
 
-					await publishEndpoint.Publish(paymentSuccessEvent);
+					await _bus.PublishAsync(paymentSuccessEvent);
 
 					logger.LogInformation("Payment successful Event published for OrderId: {OrderId}", cleanGuidStr);
 

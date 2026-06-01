@@ -1,8 +1,9 @@
+using ECommerce.CartService.Application.Commands.ProccessPayments;
+using ECommerce.CartService.Application.Common.Models;
+using FluentResults;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using ECommerce.CartService.Application.Common.Models;
-using FluentResults;
 
 namespace ECommerce.CartService.Application.Common.Interfaces;
 
@@ -22,7 +23,7 @@ public interface IOrderServiceClient
 
 public interface IPaymentServiceClient
 {
-	Task<Result<string>> IntialPaymentAsync(InitiatePaymentRequest request,
+	Task<Result<string>> IntialPaymentAsync(InitiatePaymentCommand request,
 		CancellationToken ct = default);
 }
 
