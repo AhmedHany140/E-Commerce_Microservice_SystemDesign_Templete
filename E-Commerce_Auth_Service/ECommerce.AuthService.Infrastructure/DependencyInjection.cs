@@ -1,3 +1,4 @@
+using ECommerce.AuthService.Infrastructure.Idempotency;
 using ECommerce.AuthService.Application.Interfaces;
 using ECommerce.AuthService.Domain.Entities;
 using ECommerce.AuthService.Infrastructure.Persistence;
@@ -29,7 +30,8 @@ public static class DependencyInjection
             .AddJwtAuthentication(configuration)
             .AddInfrastructureServices();
 
-        return services;
+        services.AddBusinessIdempotency();
+		return services;
     }
 
     private static IServiceCollection AddPersistence(
@@ -38,7 +40,8 @@ public static class DependencyInjection
         services.AddDbContextWithWolverineIntegration<AuthDbContext>(options =>
             options.UseSqlServer(configuration.GetConnectionString("Constr")));
 
-        return services;
+        services.AddBusinessIdempotency();
+		return services;
     }
 
     private static IServiceCollection AddIdentityConfiguration(
@@ -72,7 +75,8 @@ public static class DependencyInjection
             options.Lockout.AllowedForNewUsers = true;
         });
 
-        return services;
+        services.AddBusinessIdempotency();
+		return services;
     }
 
     private static IServiceCollection AddJwtAuthentication(
@@ -113,7 +117,8 @@ public static class DependencyInjection
 
         services.AddAuthorization();
 
-        return services;
+        services.AddBusinessIdempotency();
+		return services;
     }
 
     private static IServiceCollection AddInfrastructureServices(
@@ -122,6 +127,8 @@ public static class DependencyInjection
         services.AddMemoryCache();
         services.AddScoped<ITokenService, TokenService>();
 
-        return services;
+        services.AddBusinessIdempotency();
+		return services;
     }
 }
+

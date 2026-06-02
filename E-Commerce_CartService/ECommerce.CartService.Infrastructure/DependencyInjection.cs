@@ -13,6 +13,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using Wolverine.EntityFrameworkCore;
+using ECommerce.CartService.Infrastructure.Idempotency;
+using ECommerce.CartService.Infrastructure.Idempotency.Context;
 
 namespace ECommerce.CartService.Infrastructure;
 
@@ -88,20 +90,20 @@ public static class DependencyInjection
             .ProductGrpcServiceClient>(options =>
 		{
 			options.Address = new Uri(productServiceUrl);
-		});
+		}).AddInterceptor<GrpcClientIdempotencyInterceptor>();
 
 
 		services.AddGrpcClient<OrderGrpcService.OrderGrpcServiceClient>(options =>
 		{
 			options.Address = new Uri(orderServiceUrl);
-		});
+		}).AddInterceptor<GrpcClientIdempotencyInterceptor>();
 
 		
 		services.AddGrpcClient<PaymentGrpcService.PaymentGrpcServiceClient
 		>(options =>
 		{
 			options.Address = new Uri(paymentServiceUrl);
-		});
+		}).AddInterceptor<GrpcClientIdempotencyInterceptor>();
 
 
 
@@ -120,8 +122,8 @@ public static class DependencyInjection
 		services.AddScoped<IProductServiceClient, ProductServiceClient>();
 		services.AddScoped<IOrderServiceClient, OrderServiceClient>();
 
-
-
+        services.AddIdempotencyContextPropagation();
+        services.AddBusinessIdempotency();
 
         return services;
     }

@@ -4,6 +4,7 @@ using PaymentService.Api.Endpoints;
 using PaymentService.Api.Events;
 using PaymentService.Api.Interfaces;
 using PaymentService.Api.Services;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Wolverine;
 using Wolverine.RabbitMQ;
@@ -30,10 +31,14 @@ builder.Host.UseWolverine(opts =>
 	//Auto -apply idempotency to all handlers that do not have DB Transactions. This means that even handlers that do not interact with the database will still benefit from idempotency, preventing duplicate processing of messages in scenarios where transactions are not used.
 	opts.Policies.AutoApplyIdempotencyOnNonTransactionalHandlers();
 
+	opts.Policies.AddMiddleware(typeof(PaymentService.Api.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
+
 	var rabbitUrl = builder.Configuration["RabbitMq:Url"];
 
-	opts.UseRabbitMq(new Uri(rabbitUrl))
-		.AutoProvision();
+	if (!string.IsNullOrEmpty(rabbitUrl))
+	{
+		opts.UseRabbitMq(new Uri(rabbitUrl)).AutoProvision();
+	}
 
 	opts.UseSystemTextJsonForSerialization();
 
@@ -57,7 +62,13 @@ builder.Host.UseWolverine(opts =>
 
 
 builder.Services.AddOpenApi();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options => 
+{
+    options.Interceptors.Add<PaymentService.Api.Idempotency.Context.GrpcServerIdempotencyInterceptor>();
+});
+
+builder.Services.AddSingleton<PaymentService.Api.Idempotency.Context.IIdempotencyContextAccessor, PaymentService.Api.Idempotency.Context.IdempotencyContextAccessor>();
+builder.Services.AddSingleton<PaymentService.Api.Idempotency.IIdempotencyKeyProvider, PaymentService.Api.Idempotency.IdempotencyKeyProvider>();
 
 builder.Configuration.AddEnvironmentVariables();
 
@@ -97,3 +108,4 @@ app.UseWhen(
 app.MapGrpcService<PaymentGrpcServiceImpl>();
 
 app.Run();
+

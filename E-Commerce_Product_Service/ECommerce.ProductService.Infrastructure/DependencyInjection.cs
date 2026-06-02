@@ -1,3 +1,4 @@
+using ECommerce.ProductService.Infrastructure.Idempotency;
 using ECommerce.ProductService.Application.Common.Interfaces;
 using ECommerce.ProductService.Infrastructure.Persistence;
 using ECommerce.ProductService.Infrastructure.Persistence.Repositories;
@@ -99,7 +100,9 @@ namespace ECommerce.ProductService.Infrastructure
 			//			.WithScopedLifetime()
 			//		);
 
-			return services;
+			services.AddBusinessIdempotency();
+		return services;
 		}
 	}
 }
+

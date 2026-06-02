@@ -1,3 +1,4 @@
+using ECommerce.AuthService.Infrastructure.Idempotency;
 using DotNetEnv;
 using ECommerce.AuthService.Api.Grpc;
 using ECommerce.AuthService.Api.Middleware;
@@ -16,6 +17,7 @@ using Wolverine.Http;
 using Wolverine.Persistence;
 using Wolverine.RabbitMQ;
 using Wolverine.SqlServer;
+using ECommerce.AuthService.Infrastructure.Idempotency.Context;
 
 Env.Load();
 
@@ -80,8 +82,8 @@ builder.Host.UseWolverine(opts =>
 
 	opts.Policies.AutoApplyTransactions();
 
-
-	var rabbitUrl = builder.Configuration["RabbitMq:Url"];
+    opts.Policies.AddMiddleware(typeof(ECommerce.AuthService.Infrastructure.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
+var rabbitUrl = builder.Configuration["RabbitMq:Url"];
 
 	opts.UseRabbitMq(new Uri(rabbitUrl))
 		.AutoProvision();
@@ -98,7 +100,10 @@ builder.Host.UseWolverine(opts =>
 // ── Swagger / HTTP / gRPC ────────────────────────────────────────────
 builder.Services.AddSwaggerGen();
 builder.Services.AddWolverineHttp();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options => 
+{
+    options.Interceptors.Add<ECommerce.AuthService.Infrastructure.Idempotency.Context.GrpcServerIdempotencyInterceptor>();
+});
 
 var app = builder.Build();
 
@@ -128,7 +133,11 @@ app.UseSerilogRequestLogging(options =>
 
 app.UseMiddleware<TokenBlacklistMiddleware>();
 
+app.UseMiddleware<IdempotencyContextMiddleware>();
+app.UseBusinessIdempotency();
 app.MapWolverineEndpoints();
 app.MapGrpcService<AuthorizationGrpcServiceImplementation>();
 
 app.Run();
+
+

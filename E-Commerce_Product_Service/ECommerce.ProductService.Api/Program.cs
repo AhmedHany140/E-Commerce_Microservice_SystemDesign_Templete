@@ -1,3 +1,4 @@
+using ECommerce.ProductService.Infrastructure.Idempotency;
 using DotNetEnv;
 using ECommerce.ProductService.Api.Endpoints;
 using ECommerce.ProductService.Api.GraphQL;
@@ -70,8 +71,7 @@ builder.Host.UseWolverine(opts =>
 
 	opts.Policies.AutoApplyTransactions();
 
-
-
+    opts.Policies.AddMiddleware(typeof(ECommerce.ProductService.Infrastructure.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
 });
 
 
@@ -92,7 +92,10 @@ builder.Host.UseWolverine(opts =>
 });
 
 builder.Services.AddWolverineHttp();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options => 
+{
+    options.Interceptors.Add<ECommerce.ProductService.Infrastructure.Idempotency.Context.GrpcServerIdempotencyInterceptor>();
+});
 
 builder.Services
 	.AddGraphQLServer()
@@ -141,9 +144,13 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapGrpcService<ImplementedProductGrpcService>();
 // ── Wolverine Endpoints ────────────────────────────────────────────────────────
+app.UseMiddleware<ECommerce.ProductService.Infrastructure.Idempotency.Context.IdempotencyContextMiddleware>();
+app.UseBusinessIdempotency();
 app.MapWolverineEndpoints(opts =>
 {
     opts.UseFluentValidationProblemDetailMiddleware();
 });
 
 app.Run();
+
+

@@ -9,6 +9,7 @@ public class OrderDbContext : DbContext
 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
+    public DbSet<ECommerce.OrderService.Infrastructure.Idempotency.IdempotencyRecord> IdempotencyRecords => Set<ECommerce.OrderService.Infrastructure.Idempotency.IdempotencyRecord>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

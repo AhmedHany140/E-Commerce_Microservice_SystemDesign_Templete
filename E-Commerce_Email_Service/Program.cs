@@ -1,6 +1,7 @@
 using E_Commerce_Email_Service.Consumers;
 using ECommerce.EmailService.Services;
 using ECommerce.EmailService.Settings;
+using Microsoft.EntityFrameworkCore;
 using MassTransit;
 using Serilog;
 
@@ -20,6 +21,18 @@ builder.Services.Configure<SmtpSettings>(
 // Register Services
 builder.Services.AddScoped<IEmailService, EmailService>();
 
+builder.Services.AddDbContext<ECommerce.EmailService.Persistence.EmailDbContext>(options =>
+{
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=(localdb)\\mssqllocaldb;Database=EmailDb;Trusted_Connection=True;");
+});
+
+builder.Services.AddSingleton<ECommerce.EmailService.Idempotency.Context.IIdempotencyContextAccessor, ECommerce.EmailService.Idempotency.Context.IdempotencyContextAccessor>();
+builder.Services.AddSingleton<ECommerce.EmailService.Idempotency.IIdempotencyKeyProvider, ECommerce.EmailService.Idempotency.IdempotencyKeyProvider>();
+
+builder.Services.AddScoped<ECommerce.EmailService.Idempotency.IIdempotencyStore, ECommerce.EmailService.Idempotency.IdempotencyStore>();
+builder.Services.AddScoped<ECommerce.EmailService.Idempotency.IEmailIdempotencyProcessor, ECommerce.EmailService.Idempotency.EmailIdempotencyProcessor>();
+builder.Services.AddHostedService<ECommerce.EmailService.Idempotency.IdempotencyCleanupService>();
+
 // ? Configure MassTransit
 builder.Services.AddMassTransit(x =>
 {
@@ -37,6 +50,8 @@ builder.Services.AddMassTransit(x =>
 
 		cfg.ReceiveEndpoint("email-queue", e =>
 		{
+			e.UseConsumeFilter(typeof(ECommerce.EmailService.Idempotency.Context.MassTransitIncomingIdempotencyFilter<>), context);
+			
 			e.ConfigureConsumer<EmailConsumer>(context);
 
 

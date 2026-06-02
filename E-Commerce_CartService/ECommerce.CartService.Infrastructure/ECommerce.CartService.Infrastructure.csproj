@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <None Remove="Protos\cart.proto" />
@@ -9,6 +9,10 @@
   <ItemGroup>
     <ProjectReference Include="..\ECommerce.CartService.Domain\ECommerce.CartService.Domain.csproj" />
     <ProjectReference Include="..\ECommerce.CartService.Application\ECommerce.CartService.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>

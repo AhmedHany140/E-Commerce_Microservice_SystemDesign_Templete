@@ -38,6 +38,8 @@ public class AuthDbContext : IdentityDbContext<User, IdentityRole<Guid>, Guid>
     {
     }
 
+    public DbSet<ECommerce.AuthService.Infrastructure.Idempotency.IdempotencyRecord> IdempotencyRecords => Set<ECommerce.AuthService.Infrastructure.Idempotency.IdempotencyRecord>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);

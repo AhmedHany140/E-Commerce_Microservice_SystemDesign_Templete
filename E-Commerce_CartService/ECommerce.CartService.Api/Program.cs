@@ -4,6 +4,7 @@ using ECommerce.CartService.Api.Requests;
 using ECommerce.CartService.Application.Commands.AddItemToCart;
 using ECommerce.CartService.Infrastructure;
 using ECommerce.CartService.Infrastructure.Services;
+using ECommerce.CartService.Infrastructure.Idempotency;
 using FluentValidation;
 using JasperFx.Core;
 using Microsoft.Data.SqlClient;
@@ -36,7 +37,10 @@ builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddValidatorsFromAssembly(typeof(AddItemToCartRequestValidator).Assembly);
 builder.Services.AddWolverineHttp();
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options => 
+{
+    options.Interceptors.Add<ECommerce.CartService.Infrastructure.Idempotency.Context.GrpcServerIdempotencyInterceptor>();
+});
 
 //   Wolverine Configuration with Idempotency 
 builder.Host.UseWolverine(opts =>
@@ -78,8 +82,7 @@ builder.Host.UseWolverine(opts =>
 
 	opts.Policies.AutoApplyTransactions();
 
-
-
+	opts.Policies.AddMiddleware(typeof(ECommerce.CartService.Infrastructure.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
 });
 
 // ?? Add Endpoints & Swagger ??????????????????????????????????????????????????
@@ -110,6 +113,9 @@ app.UseSerilogRequestLogging(options =>
 			httpContext.Request.Headers.UserAgent.ToString());
 	};
 });
+
+app.UseMiddleware<ECommerce.CartService.Infrastructure.Idempotency.Context.IdempotencyContextMiddleware>();
+app.UseBusinessIdempotency();
 
 app.MapWolverineEndpoints(opts =>
 {

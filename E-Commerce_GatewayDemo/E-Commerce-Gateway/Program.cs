@@ -211,6 +211,19 @@ app.MapHealthChecks("/health");
 app.MapHealthChecks("/health/ready");
 
 // Reverse proxy
+app.Use(async (context, next) =>
+{
+	var method = context.Request.Method;
+	if (HttpMethods.IsPost(method) || HttpMethods.IsPut(method) || HttpMethods.IsPatch(method) || HttpMethods.IsDelete(method))
+	{
+		if (!context.Request.Headers.TryGetValue("Idempotency-Key", out var key) || string.IsNullOrWhiteSpace(key))
+		{
+			context.Request.Headers.Append("Idempotency-Key", Guid.NewGuid().ToString());
+		}
+	}
+	await next();
+});
+
 app.MapReverseProxy();
 
 // Fallback route

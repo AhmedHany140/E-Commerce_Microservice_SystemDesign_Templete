@@ -1,3 +1,4 @@
+using ECommerce.OrderService.Infrastructure.Idempotency;
 using ECommerce.OrderService.Api.Endpoints;
 using ECommerce.OrderService.Api.Queries;
 using ECommerce.OrderService.Application.Features.Orders.Cancel;
@@ -79,7 +80,8 @@ builder.Host.UseWolverine(opts =>
 
 	opts.Policies.AutoApplyTransactions();
 
-	var rabbitUrl =
+    opts.Policies.AddMiddleware(typeof(ECommerce.OrderService.Infrastructure.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
+var rabbitUrl =
 	   builder.Configuration["RabbitMqUrl:url"];
 
 	opts.UseRabbitMq(new Uri(rabbitUrl))
@@ -94,7 +96,10 @@ builder.Host.UseWolverine(opts =>
 
 builder.Services.AddWolverineHttp();
 
-builder.Services.AddGrpc();
+builder.Services.AddGrpc(options => 
+{
+    options.Interceptors.Add<ECommerce.OrderService.Infrastructure.Idempotency.Context.GrpcServerIdempotencyInterceptor>();
+});
 
 builder.Services
 	.AddGraphQLServer()
@@ -146,6 +151,8 @@ app.UseSerilogRequestLogging(options =>
 });
 
 
+app.UseMiddleware<ECommerce.OrderService.Infrastructure.Idempotency.Context.IdempotencyContextMiddleware>();
+app.UseBusinessIdempotency();
 app.MapWolverineEndpoints(opts =>
 {
     opts.UseFluentValidationProblemDetailMiddleware();
@@ -153,3 +160,6 @@ app.MapWolverineEndpoints(opts =>
 app.MapGrpcService<ImplementationOrderService>();
 
 app.Run();
+
+
+

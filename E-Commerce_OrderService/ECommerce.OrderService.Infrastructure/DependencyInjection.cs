@@ -1,3 +1,4 @@
+using ECommerce.OrderService.Infrastructure.Idempotency;
 using ECommerce.OrderService.Api.Grpc;
 using ECommerce.OrderService.Application.Common.Interfaces;
 using ECommerce.OrderService.Infrastructure.ExternalServices;
@@ -92,6 +93,10 @@ public static class DependencyInjection
 
 		services.AddScoped<IEventBus, EventBus>();
 
-        return services;
+        services.AddIdempotencyContextPropagation();
+        services.AddBusinessIdempotency();
+		return services;
     }
 }
+
+
