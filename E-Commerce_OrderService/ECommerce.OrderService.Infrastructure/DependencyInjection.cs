@@ -7,6 +7,7 @@ using ECommerce.OrderService.Infrastructure.Messaging;
 using ECommerce.OrderService.Infrastructure.Persistence;
 using ECommerce.OrderService.Infrastructure.Persistence.Repositories;
 using ECommerce.ProductService.Infrastructure.Grpc;
+using ECommerce.PaymentService.Api.Grpc;
 using MassTransit;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -71,12 +72,26 @@ public static class DependencyInjection
         // HTTP Clients (Cart & Product Services)
         services.AddGrpcClient<CartGrpcService.CartGrpcServiceClient>(client =>
         {
-            client.Address = new Uri(configuration["CartService:BaseUrl"]);
+            client.Address = new Uri("https://localhost:7209");
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         });
 
         services.AddGrpcClient<ProductGrpcService.ProductGrpcServiceClient>(client =>
         {
-            client.Address = new Uri(configuration["ProductService:BaseUrl"]);
+            client.Address = new Uri("https://localhost:7103");
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+        });
+
+        services.AddGrpcClient<PaymentGrpcService.PaymentGrpcServiceClient>(client =>
+        {
+        client.Address = new Uri("https://localhost:7053");
+        }).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+        {
+            ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
         });
 
   

@@ -20,6 +20,12 @@ public class BusinessIdempotencyMiddleware
 
     public async Task InvokeAsync(HttpContext context, IIdempotencyKeyProvider keyProvider, IBusinessIdempotencyProcessor processor)
     {
+        if (context.Request.ContentType?.StartsWith("application/grpc", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            await _next(context);
+            return;
+        }
+
         var method = context.Request.Method;
         if (!HttpMethods.IsPost(method) && !HttpMethods.IsPut(method) && !HttpMethods.IsDelete(method) && !HttpMethods.IsPatch(method))
         {

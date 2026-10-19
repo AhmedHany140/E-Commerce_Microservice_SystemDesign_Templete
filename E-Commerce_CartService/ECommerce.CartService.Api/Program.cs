@@ -5,9 +5,11 @@ using ECommerce.CartService.Application.Commands.AddItemToCart;
 using ECommerce.CartService.Infrastructure;
 using ECommerce.CartService.Infrastructure.Services;
 using ECommerce.CartService.Infrastructure.Idempotency;
+using ECommerce.Shared.Persistence;
 using FluentValidation;
 using JasperFx.Core;
 using Microsoft.Data.SqlClient;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Serilog;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
@@ -16,10 +18,13 @@ using Wolverine.Http;
 using Wolverine.Http.FluentValidation;
 using Wolverine.Persistence;
 using Wolverine.SqlServer;
+using JasperFx.CodeGeneration.Model;
 
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options =>
+    options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 
 // ?? Logging ??????????????????????????????????????????????????????????????????
 Log.Logger = new LoggerConfiguration()
@@ -45,12 +50,16 @@ builder.Services.AddGrpc(options =>
 //   Wolverine Configuration with Idempotency 
 builder.Host.UseWolverine(opts =>
 {
+	opts.ServiceLocationPolicy = ServiceLocationPolicy.AllowedButWarn;
 	var connectionString = builder.Configuration.GetConnectionString("Constr");
 
 	opts.Discovery.IncludeAssembly(typeof(AddItemToCartHandler).Assembly);
 	opts.ApplicationAssembly = typeof(CartEndpoints).Assembly;
 
-	opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+	if (builder.Configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+	{
+		opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+	}
 
 	
 	opts.UseEntityFrameworkCoreTransactions();
@@ -87,16 +96,10 @@ builder.Host.UseWolverine(opts =>
 
 // ?? Add Endpoints & Swagger ??????????????????????????????????????????????????
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 
 // ?? Build & Run Application ?????????????????????????????????????????????????
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-	app.UseSwagger();
-	app.UseSwaggerUI();
-}
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -124,4 +127,7 @@ app.MapWolverineEndpoints(opts =>
 
 app.MapGrpcService<ImpCartGrpcService>();
 
-app.Run();
+await app.StartAsync();
+if (builder.Configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+    await WolverineSchemaRepair.NormalizeReceivedAtAsync(builder.Configuration.GetConnectionString("Constr"), "CartService");
+await app.WaitForShutdownAsync();

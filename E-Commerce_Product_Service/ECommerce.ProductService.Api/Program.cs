@@ -5,6 +5,7 @@ using ECommerce.ProductService.Api.GraphQL;
 using ECommerce.ProductService.Application.Features.Products.Create;
 using ECommerce.ProductService.Infrastructure;
 using ECommerce.ProductService.Infrastructure.Services;
+using ECommerce.Shared.Persistence;
 using FluentValidation;
 using Humanizer;
 using Microsoft.Data.SqlClient;
@@ -16,6 +17,8 @@ using Wolverine.Http;
 using Wolverine.Http.FluentValidation;
 using Wolverine.Persistence;
 using Wolverine.SqlServer;
+using JasperFx.CodeGeneration.Model;
+using HotChocolate.AspNetCore.CommandLine;
 
 
 Env.Load();
@@ -34,12 +37,16 @@ builder.Host.UseSerilog();
 //   Wolverine Configuration with Idempotency 
 builder.Host.UseWolverine(opts =>
 {
+	opts.ServiceLocationPolicy = ServiceLocationPolicy.AllowedButWarn;
 	var connectionString = builder.Configuration.GetConnectionString("Constr");
 
 	opts.Discovery.IncludeAssembly(typeof(CreateProductCommand).Assembly);
 	opts.ApplicationAssembly = typeof(ProductEndpoints).Assembly;
 
-	opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+	if (builder.Configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+	{
+		opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+	}
 
 
 	opts.UseEntityFrameworkCoreTransactions();
@@ -85,17 +92,8 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddAuthorization();
 
 builder.Services.AddValidatorsFromAssembly(typeof(ECommerce.ProductService.Api.Requests.CreateProductRequestValidator).Assembly);
-builder.Host.UseWolverine(opts =>
-{
-	opts.Discovery.IncludeAssembly(typeof(CreateProductCommand).Assembly);//in application layer for command handlers
-	opts.ApplicationAssembly = typeof(ProductEndpoints).Assembly;//in api host for endpoints 
-});
-
 builder.Services.AddWolverineHttp();
-builder.Services.AddGrpc(options => 
-{
-    options.Interceptors.Add<ECommerce.ProductService.Infrastructure.Idempotency.Context.GrpcServerIdempotencyInterceptor>();
-});
+builder.Services.AddGrpc();
 
 builder.Services
 	.AddGraphQLServer()
@@ -111,13 +109,9 @@ builder.Services
 
 
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
 // ─────────────────────────────────────────────────────────────────────────────
 var app = builder.Build();
 
-
-app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Product API v1"));
 
 
 app.MapGraphQL("/graphql");
@@ -151,6 +145,16 @@ app.MapWolverineEndpoints(opts =>
     opts.UseFluentValidationProblemDetailMiddleware();
 });
 
-app.Run();
+if (args.Length > 0)
+{
+    app.RunWithGraphQLCommands(args);
+}
+else
+{
+    await app.StartAsync();
+    if (builder.Configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+        await WolverineSchemaRepair.NormalizeReceivedAtAsync(builder.Configuration.GetConnectionString("Constr"), "CartService");
+    await app.WaitForShutdownAsync();
+}
 
 

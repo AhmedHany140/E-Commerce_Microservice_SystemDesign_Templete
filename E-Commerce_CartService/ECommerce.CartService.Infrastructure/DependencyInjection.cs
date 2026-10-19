@@ -28,8 +28,13 @@ public static class DependencyInjection
         var connectionString = configuration.GetConnectionString(
             "Constr");
 
-        services.AddDbContextWithWolverineIntegration<CartDbContext>(options =>
+        var optionsAction = (Action<DbContextOptionsBuilder>)(options =>
             options.UseSqlServer(connectionString));
+
+        if (configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+            services.AddDbContextWithWolverineIntegration<CartDbContext>(optionsAction);
+        else
+            services.AddDbContext<CartDbContext>(optionsAction);
 
 
 
@@ -89,21 +94,30 @@ public static class DependencyInjection
 		services.AddGrpcClient<ProductGrpcService
             .ProductGrpcServiceClient>(options =>
 		{
-			options.Address = new Uri(productServiceUrl);
-		}).AddInterceptor<GrpcClientIdempotencyInterceptor>();
+			options.Address = new Uri("https://localhost:7103");
+		}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+		{
+			ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+		});
 
 
 		services.AddGrpcClient<OrderGrpcService.OrderGrpcServiceClient>(options =>
 		{
-			options.Address = new Uri(orderServiceUrl);
-		}).AddInterceptor<GrpcClientIdempotencyInterceptor>();
+			options.Address = new Uri("https://localhost:7046");
+		}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+		{
+			ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+		});
 
 		
 		services.AddGrpcClient<PaymentGrpcService.PaymentGrpcServiceClient
 		>(options =>
 		{
-			options.Address = new Uri(paymentServiceUrl);
-		}).AddInterceptor<GrpcClientIdempotencyInterceptor>();
+			options.Address = new Uri("https://localhost:7053");
+		}).ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+		{
+			ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
+		});
 
 
 

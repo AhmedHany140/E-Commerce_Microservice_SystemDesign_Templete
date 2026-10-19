@@ -23,8 +23,13 @@ namespace ECommerce.ProductService.Infrastructure
 			var connectionString = configuration.GetConnectionString(
 				"Constr");
 
-			services.AddDbContextWithWolverineIntegration<ProductDbContext>(options =>
+			var optionsAction = (Action<DbContextOptionsBuilder>)(options =>
 				options.UseSqlServer(connectionString));
+
+			if (configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+				services.AddDbContextWithWolverineIntegration<ProductDbContext>(optionsAction);
+			else
+				services.AddDbContext<ProductDbContext>(optionsAction);
 
 
 
@@ -67,28 +72,41 @@ namespace ECommerce.ProductService.Infrastructure
 			services.AddScoped<IProductRepository, ProductRepository>();
 			services.AddScoped<ICategoryRepository, CategoryRepository>();
 			// ── Caching ──────────────────────────────────────────────────────────
-			services.AddMemoryCache();
+        services.AddMemoryCache();
+        services.AddIdempotencyContextPropagation();
 
 
 
 			// ── Messaging (MassTransit + RabbitMQ) ────────────────────────────────
-			services.AddMassTransit(x =>
+			if (configuration.GetValue("RabbitMq:Enabled", false))
 			{
-				x.UsingRabbitMq((context, cfg) =>
+				services.AddMassTransit(x =>
 				{
-					var rabbitMqHost = configuration["RabbitMQ:Host"] ?? "localhost";
-					var rabbitMqUser = configuration["RabbitMQ:Username"] ?? "guest";
-					var rabbitMqPass = configuration["RabbitMQ:Password"] ?? "guest";
-
-					cfg.Host(rabbitMqHost, h =>
+					x.UsingRabbitMq((context, cfg) =>
 					{
-						h.Username(rabbitMqUser);
-						h.Password(rabbitMqPass);
-					});
+						var rabbitMqUrl = configuration["RabbitMq:Url"];
+						if (Uri.TryCreate(rabbitMqUrl, UriKind.Absolute, out var rabbitUri)
+							&& !rabbitMqUrl!.Contains("RABBITMQ_", StringComparison.OrdinalIgnoreCase))
+						{
+							cfg.Host(rabbitUri, h =>
+							{
+								h.Username(configuration["RabbitMq:Username"] ?? string.Empty);
+								h.Password(configuration["RabbitMq:Password"] ?? string.Empty);
+							});
+							cfg.ConfigureEndpoints(context);
+							return;
+						}
 
-					cfg.ConfigureEndpoints(context);
+						var rabbitMqHost = configuration["RabbitMq:Host"] ?? "localhost";
+						var rabbitMqUser = configuration["RabbitMq:Username"]
+							?? throw new InvalidOperationException("RabbitMq:Username is required.");
+						var rabbitMqPass = configuration["RabbitMq:Password"]
+							?? throw new InvalidOperationException("RabbitMq:Password is required.");
+						cfg.Host(rabbitMqHost, h => { h.Username(rabbitMqUser); h.Password(rabbitMqPass); });
+						cfg.ConfigureEndpoints(context);
+					});
 				});
-			});
+			}
 
 		
 			//services.Scan(scan => scan

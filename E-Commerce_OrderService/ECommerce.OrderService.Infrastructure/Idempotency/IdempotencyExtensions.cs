@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using ECommerce.Shared.ServiceDefaults;
 
 namespace ECommerce.OrderService.Infrastructure.Idempotency;
 
@@ -7,9 +8,7 @@ public static class IdempotencyExtensions
 {
     public static IServiceCollection AddBusinessIdempotency(this IServiceCollection services)
     {
-        services.AddScoped<IIdempotencyStore, IdempotencyStore>();
-        services.AddHostedService<IdempotencyCleanupService>();
-        return services;
+        return services.AddSharedIdempotency<IIdempotencyStore, IdempotencyStore, IdempotencyCleanupService>();
     }
 
     public static IApplicationBuilder UseBusinessIdempotency(this IApplicationBuilder app)

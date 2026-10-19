@@ -10,6 +10,7 @@ using FluentValidation;
 using Humanizer;
 using Microsoft.Data.SqlClient;
 using Serilog;
+using ECommerce.Shared.Persistence;
 using Wolverine;
 using Wolverine.EntityFrameworkCore;
 using Wolverine.ErrorHandling;
@@ -18,6 +19,7 @@ using Wolverine.Persistence;
 using Wolverine.RabbitMQ;
 using Wolverine.SqlServer;
 using ECommerce.AuthService.Infrastructure.Idempotency.Context;
+using JasperFx.CodeGeneration.Model;
 
 Env.Load();
 
@@ -44,13 +46,17 @@ builder.Services.AddValidatorsFromAssemblyContaining<PresentationMarker>();
 // ── Wolverine ────────────────────────────────────────────────────────
 builder.Host.UseWolverine(opts =>
 {
+	opts.ServiceLocationPolicy = ServiceLocationPolicy.AllowedButWarn;
 	var connectionString = builder.Configuration.GetConnectionString("Constr");
 
 	opts.ApplicationAssembly = typeof(LoginCommand).Assembly;
 	opts.Discovery.IncludeAssembly(typeof(PresentationMarker).Assembly);
 
 
-	opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+	if (builder.Configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+	{
+		opts.PersistMessagesWithSqlServer(connectionString, "CartService");
+	}
 
 
 	opts.UseEntityFrameworkCoreTransactions();
@@ -83,22 +89,31 @@ builder.Host.UseWolverine(opts =>
 	opts.Policies.AutoApplyTransactions();
 
     opts.Policies.AddMiddleware(typeof(ECommerce.AuthService.Infrastructure.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
-var rabbitUrl = builder.Configuration["RabbitMq:Url"];
+	var rabbitEnabled = builder.Configuration.GetValue("RabbitMq:Enabled", false);
+	var rabbitUrl = builder.Configuration["RabbitMq:Url"];
+	var emailExchange = builder.Configuration["RabbitMq:EmailExchange"] ?? "auth-email-events";
 
-	opts.UseRabbitMq(new Uri(rabbitUrl))
-		.AutoProvision();
+	if (rabbitEnabled && Uri.TryCreate(rabbitUrl, UriKind.Absolute, out var rabbitUri))
+	{
+		opts.UseRabbitMq(rabbitUri).AutoProvision();
+	}
 
 	opts.UseSystemTextJsonForSerialization();
 
-	opts.PublishMessage<RabbitMqEmailMessage>()
-		.ToRabbitQueue("email-queue");
+	if (rabbitEnabled)
+	{
+		// Publish to a dedicated exchange. The Email service owns the
+		// email-queue declaration, avoiding queue-argument conflicts between
+		// Wolverine and MassTransit while keeping the message contract shared.
+		opts.PublishMessage<RabbitMqEmailMessage>()
+			.ToRabbitExchange(emailExchange);
+	}
 
 	opts.Policies.AutoApplyTransactions();
 	opts.Policies.UseDurableLocalQueues();
 });
 
 // ── Swagger / HTTP / gRPC ────────────────────────────────────────────
-builder.Services.AddSwaggerGen();
 builder.Services.AddWolverineHttp();
 builder.Services.AddGrpc(options => 
 {
@@ -107,10 +122,8 @@ builder.Services.AddGrpc(options =>
 
 var app = builder.Build();
 
-// ── Middleware pipeline ──────────────────────────────────────────────
-app.UseSwagger();
-app.UseSwaggerUI(c => c.SwaggerEndpoint("/swagger/v1/swagger.json", "Auth API v1"));
 
+// ── Middleware pipeline ──────────────────────────────────────────────
 app.UseAuthentication();
 app.UseAuthorization();
 
@@ -138,6 +151,18 @@ app.UseBusinessIdempotency();
 app.MapWolverineEndpoints();
 app.MapGrpcService<AuthorizationGrpcServiceImplementation>();
 
-app.Run();
+await app.StartAsync();
+
+// Wolverine 6 may upgrade an older envelope table during StartAsync. The
+// current runtime can explicitly persist NULL for received_at, so normalize
+// the legacy column only after Wolverine has completed its own migration.
+if (builder.Configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+{
+	await WolverineSchemaRepair.NormalizeReceivedAtAsync(
+		builder.Configuration.GetConnectionString("Constr"),
+		"CartService");
+}
+
+await app.WaitForShutdownAsync();
 
 

@@ -38,7 +38,7 @@ public class GrpcClientIdempotencyInterceptor : Interceptor
         AddIdempotencyKey(headers);
         var newOptions = context.Options.WithHeaders(headers);
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host, newOptions);
-        return base.AsyncUnaryCall(request, newContext, continuation);
+        return continuation(request, newContext);
     }
 }
 
@@ -61,6 +61,6 @@ public class GrpcServerIdempotencyInterceptor : Interceptor
             _accessor.SetCurrentKey(entry.Value);
         }
 
-        return base.UnaryServerHandler(request, context, continuation);
+        return continuation(request, context);
     }
 }

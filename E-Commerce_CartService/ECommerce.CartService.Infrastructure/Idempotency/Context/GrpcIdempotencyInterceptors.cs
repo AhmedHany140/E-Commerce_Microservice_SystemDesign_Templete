@@ -15,19 +15,9 @@ public class GrpcClientIdempotencyInterceptor : Interceptor
 
     private void AddIdempotencyKey(Metadata headers)
     {
-        if (_accessor.HasKey())
-        {
-            var key = _accessor.GetCurrentKey();
-            if (!string.IsNullOrEmpty(key))
-            {
-                // gRPC headers must be lower-case
-                var existing = headers.Get("idempotency-key");
-                if (existing == null)
-                {
-                    headers.Add("idempotency-key", key);
-                }
-            }
-        }
+        // Idempotency-Key is an HTTP command concern. Do not forward it to
+        // gRPC handlers: the HTTP idempotency middleware would intercept the
+        // binary gRPC response and remove its message/trailers.
     }
 
     public override AsyncUnaryCall<TResponse> AsyncUnaryCall<TRequest, TResponse>(
@@ -38,7 +28,7 @@ public class GrpcClientIdempotencyInterceptor : Interceptor
         AddIdempotencyKey(headers);
         var newOptions = context.Options.WithHeaders(headers);
         var newContext = new ClientInterceptorContext<TRequest, TResponse>(context.Method, context.Host, newOptions);
-        return base.AsyncUnaryCall(request, newContext, continuation);
+        return continuation(request, newContext);
     }
 }
 
@@ -61,6 +51,6 @@ public class GrpcServerIdempotencyInterceptor : Interceptor
             _accessor.SetCurrentKey(entry.Value);
         }
 
-        return base.UnaryServerHandler(request, context, continuation);
+        return continuation(request, context);
     }
 }
