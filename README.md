@@ -34,6 +34,8 @@
 
 This is a distributed e-commerce platform built on a **microservices architecture** that strictly separates read and write operations at the edge by utilizing two distinct API Gateways:
 
+> **Project scope:** this repository is a **backend/API-only system**. It does not include a customer-facing web or mobile frontend. Frontends, admin panels, or external clients consume the REST and GraphQL APIs exposed by the gateways.
+
 - **RESTful Gateway** → Commands (state mutations)
 - **GraphQL Gateway** → Queries (data retrieval)
 
@@ -49,8 +51,8 @@ The backend consists of **six specialized microservices** communicating via:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                              CLIENT LAYER                                    │
-│                         (Web / Mobile / Admin Portal)                        │
+│                         API CONSUMER LAYER                                  │
+│                    (Web / Mobile / Admin Clients)                           │
 └──────────────────────┬─────────────────────────────┬────────────────────────┘
                        │                             │
               ┌────────▼─────────┐         ┌────────▼─────────┐
