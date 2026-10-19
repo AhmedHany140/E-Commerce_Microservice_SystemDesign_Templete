@@ -61,22 +61,29 @@ public class Program
 			options.Headers.Add("Authorization");
 		});
 
+		// The Fusion configuration uses defaultClientName: "Fusion".
+		// Keep the exact name so HeaderPropagation forwards Authorization
+		// to the Orders and Products subgraphs.
+		builder.Services.AddHttpClient("Fusion")
+			.AddHeaderPropagation();
+
 		builder.Services.AddHttpClient("ProductService", client =>
 		{
-			client.BaseAddress = new Uri("https://localhost:7103/graphql");
+			client.BaseAddress = new Uri(builder.Configuration["Services:ProductGraphQl"]
+				?? "http://localhost:5090/graphql");
 		}).AddHeaderPropagation();
 
 		builder.Services.AddHttpClient("OrderService", client =>
 		{
-			client.BaseAddress = new Uri("https://localhost:7046/graphql");
+			client.BaseAddress = new Uri(builder.Configuration["Services:OrderGraphQl"]
+				?? "http://localhost:5072/graphql");
 		}).AddHeaderPropagation();
 
 	
 
 		builder.Services
-			.AddGraphQLServer()
-			.AddRemoteSchema("ProductService")
-			.AddRemoteSchema("OrderService");
+			.AddFusionGatewayServer()
+			.ConfigureFromFile("gateway.fgp");
 
 		var app = builder.Build();
 

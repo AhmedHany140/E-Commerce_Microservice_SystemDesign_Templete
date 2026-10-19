@@ -89,9 +89,10 @@ builder.Services.AddCors(options =>
 {
 	options.AddPolicy("AllowGateway", policy =>
 	{
-		policy.AllowAnyOrigin()
-			  .AllowAnyMethod()
-			  .AllowAnyHeader();
+			  policy.WithOrigins(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+					?? new[] { "http://localhost:3000", "https://localhost:3000" })
+				  .AllowAnyMethod()
+				  .AllowAnyHeader();
 	});
 });
 
@@ -147,9 +148,6 @@ builder.Host.UseSerilog();
 builder.Services.AddHealthChecks()
 	.AddCheck("gateway", () =>
 	{
-		var logger = builder.Services.BuildServiceProvider()
-		.GetRequiredService<ILogger<Program>>();
-		logger.LogInformation("Gateway health check performed");
 		return Microsoft.Extensions.Diagnostics.HealthChecks
 		.HealthCheckResult.Healthy();
 	});

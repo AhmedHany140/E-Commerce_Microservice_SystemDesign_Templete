@@ -30,17 +30,20 @@ public static class DependencyInjection
             .AddJwtAuthentication(configuration)
             .AddInfrastructureServices();
 
-        services.AddBusinessIdempotency();
 		return services;
     }
 
     private static IServiceCollection AddPersistence(
         this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddDbContextWithWolverineIntegration<AuthDbContext>(options =>
+        var optionsAction = (Action<DbContextOptionsBuilder>)(options =>
             options.UseSqlServer(configuration.GetConnectionString("Constr")));
 
-        services.AddBusinessIdempotency();
+        if (configuration.GetValue("Wolverine:SqlPersistenceEnabled", false))
+            services.AddDbContextWithWolverineIntegration<AuthDbContext>(optionsAction);
+        else
+            services.AddDbContext<AuthDbContext>(optionsAction);
+
 		return services;
     }
 
@@ -75,7 +78,6 @@ public static class DependencyInjection
             options.Lockout.AllowedForNewUsers = true;
         });
 
-        services.AddBusinessIdempotency();
 		return services;
     }
 
@@ -117,7 +119,6 @@ public static class DependencyInjection
 
         services.AddAuthorization();
 
-        services.AddBusinessIdempotency();
 		return services;
     }
 
@@ -126,7 +127,9 @@ public static class DependencyInjection
     {
         services.AddMemoryCache();
         services.AddScoped<ITokenService, TokenService>();
+		services.AddScoped<IOTPService, OTPService>();
 
+        services.AddIdempotencyContextPropagation();
         services.AddBusinessIdempotency();
 		return services;
     }
