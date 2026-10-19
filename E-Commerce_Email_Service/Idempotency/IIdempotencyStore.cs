@@ -1,5 +1,3 @@
-using System.Threading.Tasks;
-
 namespace ECommerce.EmailService.Idempotency;
 
 public interface IIdempotencyStore

@@ -19,21 +19,21 @@ public class EmailService : IEmailService
 		CancellationToken cancellationToken = default)
 	{
 		var emailSettings = _configuration.GetSection("SmtpSettings");
-		var smtpServer = emailSettings["SmtpServer"];
-		var port = int.Parse(emailSettings["Port"]);
-		var username = emailSettings["Username"];
-		var password = emailSettings["Password"];
-		var fromEmail = emailSettings["FromEmail"];
+		var smtpServer = emailSettings["SmtpServer"] ?? string.Empty;
+		var port = emailSettings.GetValue<int>("Port");
+		var username = emailSettings["Username"] ?? string.Empty;
+		var password = emailSettings["Password"] ?? string.Empty;
+		var fromEmail = emailSettings["FromEmail"] ?? string.Empty;
 
 		if (string.IsNullOrEmpty(smtpServer) || port <= 0 ||
 			string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(fromEmail))
 		{
-			_logger.LogError("Email settings are not configured properly.");
+			throw new InvalidOperationException("SmtpSettings are not configured properly.");
 		}
 
 		if (string.IsNullOrEmpty(toEmail) || string.IsNullOrEmpty(subject) || string.IsNullOrEmpty(htmlBody))
 		{
-			_logger.LogError("Email parameters cannot be null or empty.");
+			throw new ArgumentException("Email parameters cannot be null or empty.");
 		}
 
 		using var client = new SmtpClient();

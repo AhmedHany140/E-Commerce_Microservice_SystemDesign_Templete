@@ -4,6 +4,8 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using Wolverine.Attributes;
+using Wolverine;
+using ECommerce.Shared.Messages;
 
 namespace ECommerce.OrderService.Application.Features.Orders.Payments
 {
@@ -26,11 +28,12 @@ namespace ECommerce.OrderService.Application.Features.Orders.Payments
 		string Message);
 
 
-	public static class PaymentHandlers
+	public class PaymentHandlers
 	{
-		public static async Task Hanle(PaymentSucceededEvent @event,
+		public static async Task Handle(PaymentSucceededEvent @event,
 			IOrderRepository _orderRepository,
-			ILogger _logger,
+			ILogger<PaymentSucceededEvent> _logger,
+			IMessageBus _messageBus,
 			CancellationToken ct)
 		{
 			var order = await _orderRepository.GetByIdAsync(@event.OrderId, ct);
@@ -45,6 +48,15 @@ namespace ECommerce.OrderService.Application.Features.Orders.Payments
 
 			order.SetPaymobTransactionId(@event.TransactionId.ToString());
 
+			var recipient = Environment.GetEnvironmentVariable("ORDER_CONFIRMATION_EMAIL")
+				?? "no-reply@localhost";
+			await _messageBus.PublishAsync(new RabbitMqEmailMessage(
+				recipient,
+				$"Order {order.Id} payment confirmed",
+				$"Order {order.Id} was paid successfully. Amount: {@event.Amount} {@event.Currency}. Transaction: {@event.TransactionId}.",
+				"OrderService",
+				"OrderPaymentConfirmation"));
+
 			_logger.LogInformation("Order {OrderId} marked as Paid with TransactionId: {TransactionId}",
 				order.Id, @event.TransactionId);
 		}
@@ -54,7 +66,7 @@ namespace ECommerce.OrderService.Application.Features.Orders.Payments
 	{
 		public static async Task Handle(PaymentFailedEvent @event,
 			IOrderRepository _orderRepository,
-			ILogger _logger,
+			ILogger<PaymentFailedEvent> _logger,
 			CancellationToken ct)
 		{
 			var order = await _orderRepository.GetByIdAsync(@event.OrderId, ct);
@@ -74,7 +86,7 @@ namespace ECommerce.OrderService.Application.Features.Orders.Payments
 	{
 		public static async Task Handle(RefundResult @event,
 			IOrderRepository _orderRepository,
-			ILogger _logger,
+			ILogger<RefundResult> _logger,
 			CancellationToken ct)
 		{
 

@@ -1,5 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using PaymentService.Api.Events;
+using ECommerce.OrderService.Application.Features.Orders.Payments;
 using PaymentService.Api.Interfaces;
 using System.Text.Json;
 using Wolverine;
@@ -16,8 +16,9 @@ namespace PaymentService.Api.Endpoints
 			async ([FromBody] dynamic request,
 			[FromServices] IPaymobService paymobService,
 			[FromServices] IMessageBus _bus, 
-			[FromServices] ILogger logger) =>
+			[FromServices] ILoggerFactory loggerFactory) =>
 			{
+				var logger = loggerFactory.CreateLogger("PaymentEndpoints");
 				try
 				{
 					var root = (JsonElement)request;
@@ -47,9 +48,7 @@ namespace PaymentService.Api.Endpoints
 						logger.LogWarning("Payment failed for OrderId: {OrderId}, TransactionId: {TransactionId}",
 						cleanGuidStr, transactionId);
 
-						await _bus.PublishAsync(new 
-							PaymentFailedEvent(Guid.Parse(cleanGuidStr),
-							transactionId));
+						await _bus.PublishAsync(new PaymentFailedEvent(Guid.Parse(cleanGuidStr), transactionId));
 
 						return Results.Ok(new { Message = "Payment failed",
 							OrderId = cleanGuidStr });

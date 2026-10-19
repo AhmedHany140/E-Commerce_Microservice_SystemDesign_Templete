@@ -20,6 +20,7 @@ public class IdempotencyCleanupService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
         while (!stoppingToken.IsCancellationRequested)
         {
             try

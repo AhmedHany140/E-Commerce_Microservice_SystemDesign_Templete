@@ -4,6 +4,10 @@ using ECommerce.EmailService.Settings;
 using Microsoft.EntityFrameworkCore;
 using MassTransit;
 using Serilog;
+using DotNetEnv;
+
+
+Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,37 +38,31 @@ builder.Services.AddScoped<ECommerce.EmailService.Idempotency.IEmailIdempotencyP
 builder.Services.AddHostedService<ECommerce.EmailService.Idempotency.IdempotencyCleanupService>();
 
 // ? Configure MassTransit
-builder.Services.AddMassTransit(x =>
+if (builder.Configuration.GetValue("RabbitMq:Enabled", false))
 {
-	// Register Consumer
-	x.AddConsumer<EmailConsumer>();
-
-	x.UsingRabbitMq((context, cfg) =>
+	builder.Services.AddMassTransit(x =>
 	{
-		var rabbitUrl = builder.Configuration["RabbitMqUrl:url"];
-
-		cfg.Host(new Uri(rabbitUrl));
-
-	
-		cfg.UseRawJsonSerializer(RawSerializerOptions.AnyMessageType);
-
-		cfg.ReceiveEndpoint("email-queue", e =>
+		x.AddConsumer<EmailConsumer>();
+		x.UsingRabbitMq((context, cfg) =>
 		{
-			e.UseConsumeFilter(typeof(ECommerce.EmailService.Idempotency.Context.MassTransitIncomingIdempotencyFilter<>), context);
-			
-			e.ConfigureConsumer<EmailConsumer>(context);
-
-
-
-			e.UseMessageRetry(r =>
+			var rabbitUrl = builder.Configuration["RabbitMq:Url"]
+				?? throw new InvalidOperationException("RabbitMq:Url is required when RabbitMq:Enabled is true.");
+				var emailExchange = builder.Configuration["RabbitMq:EmailExchange"] ?? "auth-email-events";
+			cfg.Host(new Uri(rabbitUrl));
+			cfg.UseRawJsonSerializer(RawSerializerOptions.AnyMessageType);
+			cfg.ReceiveEndpoint("email-queue", e =>
 			{
-				r.Interval(3, TimeSpan.FromSeconds(5));
+					e.Bind(emailExchange, bind => bind.ExchangeType = "fanout");
+				e.UseConsumeFilter(typeof(ECommerce.EmailService.Idempotency.Context.MassTransitIncomingIdempotencyFilter<>), context);
+				e.ConfigureConsumer<EmailConsumer>(context);
+				e.UseMessageRetry(r => r.Interval(3, TimeSpan.FromSeconds(5)));
 			});
 		});
 	});
-});
+}
 
 var app = builder.Build();
+
 
 
 app.UseSerilogRequestLogging(options =>

@@ -1,17 +1,22 @@
 using DotNetEnv;
 using PaymentService.Api.Dtos;
 using PaymentService.Api.Endpoints;
-using PaymentService.Api.Events;
+using ECommerce.OrderService.Application.Features.Orders.Payments;
 using PaymentService.Api.Interfaces;
 using PaymentService.Api.Services;
+using PaymentService.Api.Idempotency;
+using PaymentService.Api.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Wolverine;
 using Wolverine.RabbitMQ;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.WebHost.ConfigureKestrel(options =>
+    options.ConfigureEndpointDefaults(endpoint => endpoint.Protocols = HttpProtocols.Http1AndHttp2));
 
 Log.Logger = new LoggerConfiguration()
 	.Enrich.FromLogContext()
@@ -33,11 +38,12 @@ builder.Host.UseWolverine(opts =>
 
 	opts.Policies.AddMiddleware(typeof(PaymentService.Api.Idempotency.Context.WolverineIncomingIdempotencyMiddleware));
 
+	var rabbitEnabled = builder.Configuration.GetValue("RabbitMq:Enabled", false);
 	var rabbitUrl = builder.Configuration["RabbitMq:Url"];
 
-	if (!string.IsNullOrEmpty(rabbitUrl))
+	if (rabbitEnabled && Uri.TryCreate(rabbitUrl, UriKind.Absolute, out var rabbitUri))
 	{
-		opts.UseRabbitMq(new Uri(rabbitUrl)).AutoProvision();
+		opts.UseRabbitMq(rabbitUri).AutoProvision();
 	}
 
 	opts.UseSystemTextJsonForSerialization();
@@ -52,9 +58,6 @@ builder.Host.UseWolverine(opts =>
 	.ToRabbitQueue("refund-queue");
 
 	opts.UseSystemTextJsonForSerialization();
-
-	opts.ListenToRabbitQueue("payment-queue");
-
 
 });
 
@@ -76,8 +79,15 @@ builder.Services.Configure<PaymobSettings>(
 	builder.Configuration.GetSection("Paymob"));
 
 builder.Services.AddHttpClient<IPaymobService, PaymobService>();
+builder.Services.AddDbContext<PaymentDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")
+        ?? throw new InvalidOperationException("ConnectionStrings:DefaultConnection is required.")));
+builder.Services.AddScoped<IIdempotencyStore, IdempotencyStore>();
+builder.Services.AddScoped<IBusinessIdempotencyProcessor, BusinessIdempotencyProcessor>();
+builder.Services.AddHostedService<IdempotencyCleanupService>();
 
 var app = builder.Build();
+
 
 app.UseSerilogRequestLogging(options =>
 {
@@ -101,7 +111,8 @@ if (app.Environment.IsDevelopment())
 PaymentEndpoints.Map(app);
 
 app.UseWhen(
-	ctx => !(ctx.Request.ContentType?.StartsWith("application/grpc") ?? false),
+	ctx => !(ctx.Request.ContentType?.StartsWith("application/grpc") ?? false)
+		&& !ctx.Request.Path.StartsWithSegments("/api/payment/webhook"),
 	b => b.UseHttpsRedirection()
 );
 
