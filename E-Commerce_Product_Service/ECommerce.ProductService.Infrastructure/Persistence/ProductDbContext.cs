@@ -1,6 +1,7 @@
 using System.Reflection;
 using ECommerce.ProductService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 
 namespace ECommerce.ProductService.Infrastructure.Persistence;
 
@@ -17,5 +18,16 @@ public class ProductDbContext : DbContext
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         base.OnModelCreating(modelBuilder);
+    }
+}
+
+public sealed class ProductDbContextFactory : IDesignTimeDbContextFactory<ProductDbContext>
+{
+    public ProductDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<ProductDbContext>()
+            .UseSqlServer("Server=.;Database=ECommerceProductDb;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;")
+            .Options;
+        return new ProductDbContext(options);
     }
 }

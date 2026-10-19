@@ -1,5 +1,6 @@
 using ECommerce.OrderService.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Design;
 
 namespace ECommerce.OrderService.Infrastructure.Persistence;
 
@@ -15,5 +16,16 @@ public class OrderDbContext : DbContext
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
+    }
+}
+
+public sealed class OrderDbContextFactory : IDesignTimeDbContextFactory<OrderDbContext>
+{
+    public OrderDbContext CreateDbContext(string[] args)
+    {
+        var options = new DbContextOptionsBuilder<OrderDbContext>()
+            .UseSqlServer("Server=.;Database=ECommerceOrderDb;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;")
+            .Options;
+        return new OrderDbContext(options);
     }
 }

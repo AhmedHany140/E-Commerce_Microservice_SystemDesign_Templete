@@ -22,7 +22,7 @@ public class PaymentDbContextFactory : IDesignTimeDbContextFactory<PaymentDbCont
     public PaymentDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<PaymentDbContext>();
-        optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=PaymentDb;Trusted_Connection=True;");
+        optionsBuilder.UseSqlServer("Server=.;Database=ECommercePaymentDb;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;");
 
         return new PaymentDbContext(optionsBuilder.Options);
     }

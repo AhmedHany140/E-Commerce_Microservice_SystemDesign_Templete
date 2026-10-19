@@ -22,7 +22,7 @@ public class EmailDbContextFactory : IDesignTimeDbContextFactory<EmailDbContext>
     public EmailDbContext CreateDbContext(string[] args)
     {
         var optionsBuilder = new DbContextOptionsBuilder<EmailDbContext>();
-        optionsBuilder.UseSqlServer("Server=(localdb)\\mssqllocaldb;Database=EmailDb;Trusted_Connection=True;");
+        optionsBuilder.UseSqlServer("Server=.;Database=ECommerceEmailDb;Trusted_Connection=True;TrustServerCertificate=True;Encrypt=False;");
         return new EmailDbContext(optionsBuilder.Options);
     }
 }

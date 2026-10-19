@@ -1,15 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
     <ProjectReference Include="..\ECommerce.ProductService.Domain\ECommerce.ProductService.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="FluentResults" Version="4.0.0" />
-    <PackageReference Include="FluentValidation" Version="12.1.1" />
-    <PackageReference Include="WolverineFx" Version="5.30.0" />
-	  <PackageReference Include="WolverineFx.Http" Version="5.30.0" />
-	  <PackageReference Include="WolverineFx.Http.FluentValidation" Version="5.30.0" />
+    <PackageReference Include="FluentResults" />
+    <PackageReference Include="FluentValidation" />
+    <PackageReference Include="WolverineFx" />
+	  <PackageReference Include="WolverineFx.Http" />
+	  <PackageReference Include="WolverineFx.Http.FluentValidation" />
   </ItemGroup>
 
   <PropertyGroup>
